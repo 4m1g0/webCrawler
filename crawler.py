@@ -5,6 +5,7 @@ import re
 from urllib.request import *
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
+import time
 
 def isCategoryUrl(url):
     return bool(re.match(r'.*-c-\d*\.html', str(url)))
@@ -61,12 +62,18 @@ def main(argv):
     for uri in categories:
         while (uri):
             print("DEBUG: " + str(uri))
-            html = urlopen(uri.get('href')).read()
+            try:
+                html = urlopen(uri.get('href')).read()
+            except:
+                time.sleep(5) # wait 5 seconds to retry
+                print("Error page: " + uri.get('href') + ". Retrying...")
+                continue # retry same url (infinite loop until page is on)
             soup = BeautifulSoup(html, 'html.parser')
             items = getItems(soup)
             addItems(catalog, items)
             uri = soup.find('a', title='Next page')
         print(len(catalog))
+        time.sleep(20) 
     pickle.dump(catalog, open(argv[0], 'wb'))
 
 if __name__ == "__main__":
