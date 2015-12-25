@@ -75,7 +75,6 @@ def main(argv):
                 uri = soup.find('a', title='Next page')
             print(len(catalog))
             time.sleep(20) 
-            break
             
     except:
         pickle.dump(catalog, open(argv[0], 'wb'))
