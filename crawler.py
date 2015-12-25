@@ -55,24 +55,27 @@ def main(argv):
         uri = 'http://www.banggood.com/'
         html = urlopen(uri).read()
         soup = BeautifulSoup(html, 'html.parser')
-        categories_bulk = soup.find_all('a')
+        categories_bulk = soup.find_all('dl', class_='cate_list')
         # todas las categorias existentes
-        categories = [x for x in categories_bulk if isCategoryUrl(x.get('href'))]
+        categories = [x.find('dt', class_='cate_name').a.get('href') for x in categories_bulk]
         
         # recorremos todos los items de categoria (paginados)
         for uri in categories:
             while (uri):
-                print("DEBUG: " + str(uri))
+                uri = str(uri)
+                print("DEBUG: " + uri)
                 try:
-                    html = urlopen(uri.get('href')).read()
+                    html = urlopen(uri).read()
                 except:
                     time.sleep(5) # wait 5 seconds to retry
-                    print("Error page: " + uri.get('href') + ". Retrying...")
+                    print("Error page: " + uri + ". Retrying...")
                     continue # retry same url (infinite loop until page is on)
                 soup = BeautifulSoup(html, 'html.parser')
                 items = getItems(soup)
                 addItems(catalog, items)
                 uri = soup.find('a', title='Next page')
+                if uri:
+                    uri = uri.get('href')
             print(len(catalog))
             time.sleep(20) 
             
