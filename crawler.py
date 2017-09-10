@@ -6,6 +6,8 @@ from urllib.request import *
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import time
+import random
+import traceback
 
 def isCategoryUrl(url):
     return bool(re.match(r'.*-c-\d*\.html', str(url)))
@@ -19,7 +21,10 @@ def buildItem(li):
     item = {}
     item['uri'] = str(li.find('span', class_='title').a.get('href'))
     item['id'] = getIdFromUrl(item['uri'])
-    item['price'] = float(li.find('span', class_='price').get('oriprice'))
+    try:
+        item['price'] = float(li.find('span', class_='price').get('oriprice'))
+    except:
+        item['price'] = 0.0
     item['date'] = datetime.now()
     return item
     
@@ -52,35 +57,65 @@ def main(argv):
         catalog = {}
     
     try:
-        uri = 'http://www.banggood.com/'
-        html = urlopen(uri).read()
+        req = Request(
+            'http://www.banggood.com/', 
+            data=None, 
+            headers={
+                'User-Agent': 'chrome'
+            }
+        )
+        html = urlopen(req).read()
         soup = BeautifulSoup(html, 'html.parser')
         categories_bulk = soup.find_all('dl', class_='cate_list')
         # todas las categorias existentes
-        categories = [x.find('dt', class_='cate_name').a.get('href') for x in categories_bulk]
-        
-        # recorremos todos los items de categoria (paginados)
-        for uri in categories:
-            while (uri):
-                uri = str(uri)
-                print("DEBUG: " + uri)
-                try:
-                    html = urlopen(uri).read()
-                except:
-                    time.sleep(5) # wait 5 seconds to retry
-                    print("Error page: " + uri + ". Retrying...")
-                    continue # retry same url (infinite loop until page is on)
-                soup = BeautifulSoup(html, 'html.parser')
-                items = getItems(soup)
-                addItems(catalog, items)
-                uri = soup.find('a', title='Next page')
-                if uri:
-                    uri = uri.get('href')
-            print(len(catalog))
-            time.sleep(20) 
+        frontier = []
+        for mainCategory in categories_bulk:
+            subCategories = mainCategory.find('dd', class_='cate_sub').find_all('dt')
+            for subCategory in subCategories:
+                if not subCategory:
+                    continue
+                
+                subCatUri = subCategory.a.get('href')
+                if subCatUri:
+                    frontier.append(str(subCatUri))
             
+        while frontier:
+            uri = random.choice(frontier)
+            print("Trying uri: " + uri)
+            
+            req = Request(
+                    uri, 
+                    data=None, 
+                    headers={
+                        'User-Agent': 'chrome'
+                    }
+                )
+                
+            try:
+                html = urlopen(req).read()
+            except:
+                time.sleep(10 + random.uniform(0.8)) # wait
+                print("Error page: " + uri + ". Trying later...")
+                continue # uri is not removed and will be tried again later
+            
+            frontier.remove(uri) # remove uri from frontier
+            soup = BeautifulSoup(html, 'html.parser')
+            items = getItems(soup)
+            addItems(catalog, items)
+            link = soup.find('a', title='Next page')          
+            if not link:
+                continue
+                
+            uri = link.get('href')
+            frontier.append(str(uri))
+            time.sleep(random.uniform(0,8)) 
+            print("Number of items in catalog: " + str(len(catalog)))
+        
     except:
+        print("Fatal Error: Saving progress...")
+        pickle.dump(frontier, open('frontier_crash.bak', 'wb'))
         pickle.dump(catalog, open(argv[0], 'wb'))
+        traceback.print_exc()
         sys.exit(0)
         
     pickle.dump(catalog, open(argv[0], 'wb'))
