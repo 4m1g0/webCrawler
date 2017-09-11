@@ -94,7 +94,7 @@ def main(argv):
             try:
                 html = urlopen(req).read()
             except:
-                time.sleep(10 + random.uniform(0.8)) # wait
+                time.sleep(10 + random.uniform(0,8)) # wait
                 print("Error page: " + uri + ". Trying later...")
                 continue # uri is not removed and will be tried again later
             
@@ -108,7 +108,7 @@ def main(argv):
                 
             uri = link.get('href')
             frontier.append(str(uri))
-            time.sleep(random.uniform(0,8)) 
+            time.sleep(5 + random.uniform(0,8)) 
             print("Number of items in catalog: " + str(len(catalog)))
         
     except:
