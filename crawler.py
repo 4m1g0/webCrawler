@@ -29,26 +29,28 @@ def buildItem(li):
     return item
     
 def getItems(soup):
-    lista = soup.find('ul', class_='goodlist_1') 
+    lista = soup.find('ul', class_='goodlist_1')
+    if not lista:
+        return []
+         
     return [buildItem(item) for item in lista.find_all('li')]
     
 def addItems(catalog, items):
     for item in items:
         if item['id'] in catalog and item['date'] - catalog[item['id']]['date'] > timedelta(hours=48):
-            print("DEBUG: Updated item")
-            catalog[item['id']]['price'] = item['price']
+            # This branch is not properly tested
             if abs(catalog[item['id']]['price'] - item['price']) > item['price']*0.20:
                 print("HIGH diference: " + str(item))
+            catalog[item['id']]['price'] = item['price']
             if catalog[item['id']]['uri'] != item['uri']:
-                print("url changed: " + item)
+                print("url changed: " + str(item))
                 catalog[item['id']]['uri'] = item['uri']
         else:
-            #print("DEBUG: Inserted item "+ str(item))
             catalog[item['id']] = item
 
 def main(argv):
     if len(argv) < 1:
-        print("Error. Usage: crowler <catalog file>")
+        print("Error. Usage: crowler <catalog file> [<frontier backup>]")
         sys.exit(2)
 
     try:
@@ -57,27 +59,32 @@ def main(argv):
         catalog = {}
     
     try:
-        req = Request(
-            'http://www.banggood.com/', 
-            data=None, 
-            headers={
-                'User-Agent': 'chrome'
-            }
-        )
-        html = urlopen(req).read()
-        soup = BeautifulSoup(html, 'html.parser')
-        categories_bulk = soup.find_all('dl', class_='cate_list')
-        # todas las categorias existentes
         frontier = []
-        for mainCategory in categories_bulk:
-            subCategories = mainCategory.find('dd', class_='cate_sub').find_all('dt')
-            for subCategory in subCategories:
-                if not subCategory:
-                    continue
-                
-                subCatUri = subCategory.a.get('href')
-                if subCatUri:
-                    frontier.append(str(subCatUri))
+
+        if len(argv) > 1:
+            frontier = pickle.load(open(argv[1], 'rb'))
+        
+        if not frontier:
+            req = Request(
+                'http://www.banggood.com/', 
+                data=None, 
+                headers={
+                    'User-Agent': 'chrome'
+                }
+            )
+            html = urlopen(req).read()
+            soup = BeautifulSoup(html, 'html.parser')
+            categories_bulk = soup.find_all('dl', class_='cate_list')
+            # todas las categorias existentes
+            for mainCategory in categories_bulk:
+                subCategories = mainCategory.find('dd', class_='cate_sub').find_all('dt')
+                for subCategory in subCategories:
+                    if not subCategory:
+                        continue
+                    
+                    subCatUri = subCategory.a.get('href')
+                    if subCatUri:
+                        frontier.append(str(subCatUri))
             
         while frontier:
             uri = random.choice(frontier)
@@ -108,7 +115,7 @@ def main(argv):
                 
             uri = link.get('href')
             frontier.append(str(uri))
-            time.sleep(5 + random.uniform(0,8)) 
+            time.sleep(5 + random.uniform(0,10)) 
             print("Number of items in catalog: " + str(len(catalog)))
         
     except:
