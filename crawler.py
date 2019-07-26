@@ -30,7 +30,9 @@ def buildItem(li):
     
 def getItems(soup):
     lista = soup.find('ul', class_='goodlist_1') 
-    return [buildItem(item) for item in lista.find_all('li')]
+    if lista:
+        return [buildItem(item) for item in lista.find_all('li')]
+    return []
     
 def addItems(catalog, items):
     for item in items:
@@ -48,36 +50,44 @@ def addItems(catalog, items):
 
 def main(argv):
     if len(argv) < 1:
-        print("Error. Usage: crowler <catalog file>")
+        print("Error. Usage: crowler <catalog file> [<saved frontier>]")
         sys.exit(2)
 
     try:
         catalog = pickle.load(open(argv[0], 'rb'))
     except:
         catalog = {}
+        
+    frontier = []
+    try:
+        if len(argv) > 1:
+            frontier = pickle.load(open(argv[1], 'rb'))
+    except:
+        pass
     
     try:
-        req = Request(
-            'http://www.banggood.com/', 
-            data=None, 
-            headers={
-                'User-Agent': 'chrome'
-            }
-        )
-        html = urlopen(req).read()
-        soup = BeautifulSoup(html, 'html.parser')
-        categories_bulk = soup.find_all('dl', class_='cate_list')
-        # todas las categorias existentes
-        frontier = []
-        for mainCategory in categories_bulk:
-            subCategories = mainCategory.find('dd', class_='cate_sub').find_all('dt')
-            for subCategory in subCategories:
-                if not subCategory:
-                    continue
-                
-                subCatUri = subCategory.a.get('href')
-                if subCatUri:
-                    frontier.append(str(subCatUri))
+        if not frontier:
+            print("Initializing...")
+            req = Request(
+                'http://www.banggood.com/', 
+                data=None, 
+                headers={
+                    'User-Agent': 'chrome'
+                }
+            )
+            html = urlopen(req).read()
+            soup = BeautifulSoup(html, 'html.parser')
+            categories_bulk = soup.find_all('dl', class_='cate_list')
+            # todas las categorias existentes
+            for mainCategory in categories_bulk:
+                subCategories = mainCategory.find('dd', class_='cate_sub').find_all('dt')
+                for subCategory in subCategories:
+                    if not subCategory:
+                        continue
+                    
+                    subCatUri = subCategory.a.get('href')
+                    if subCatUri:
+                        frontier.append(str(subCatUri))
             
         while frontier:
             uri = random.choice(frontier)
@@ -94,7 +104,7 @@ def main(argv):
             try:
                 html = urlopen(req).read()
             except:
-                time.sleep(10 + random.uniform(0,8)) # wait
+                time.sleep(50 + random.uniform(0,8)) # wait
                 print("Error page: " + uri + ". Trying later...")
                 continue # uri is not removed and will be tried again later
             
@@ -108,7 +118,7 @@ def main(argv):
                 
             uri = link.get('href')
             frontier.append(str(uri))
-            time.sleep(5 + random.uniform(0,8)) 
+            time.sleep(17 + random.uniform(0,8)) 
             print("Number of items in catalog: " + str(len(catalog)))
         
     except:
