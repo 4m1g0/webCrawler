@@ -37,29 +37,29 @@ def getItems(soup):
 def addItems(catalog, items):
     for item in items:
         if item['id'] in catalog and item['date'] - catalog[item['id']]['date'] > timedelta(hours=48):
-            print("DEBUG: Updated item")
-            catalog[item['id']]['price'] = item['price']
+            # This branch is not properly tested
             if abs(catalog[item['id']]['price'] - item['price']) > item['price']*0.20:
                 print("HIGH diference: " + str(item))
+            catalog[item['id']]['price'] = item['price']
             if catalog[item['id']]['uri'] != item['uri']:
-                print("url changed: " + item)
+                print("url changed: " + str(item))
                 catalog[item['id']]['uri'] = item['uri']
         else:
-            #print("DEBUG: Inserted item "+ str(item))
             catalog[item['id']] = item
 
 def main(argv):
     if len(argv) < 1:
-        print("Error. Usage: crowler <catalog file> [<saved frontier>]")
+        print("Error. Usage: crowler <catalog file> [<frontier backup>]")
         sys.exit(2)
 
     try:
         catalog = pickle.load(open(argv[0], 'rb'))
     except:
         catalog = {}
-        
-    frontier = []
+    
     try:
+        frontier = []
+
         if len(argv) > 1:
             frontier = pickle.load(open(argv[1], 'rb'))
     except:
@@ -104,7 +104,7 @@ def main(argv):
             try:
                 html = urlopen(req).read()
             except:
-                time.sleep(50 + random.uniform(0,8)) # wait
+                time.sleep(10 + random.uniform(0,8)) # wait
                 print("Error page: " + uri + ". Trying later...")
                 continue # uri is not removed and will be tried again later
             
@@ -118,7 +118,7 @@ def main(argv):
                 
             uri = link.get('href')
             frontier.append(str(uri))
-            time.sleep(17 + random.uniform(0,8)) 
+            time.sleep(5 + random.uniform(0,10)) 
             print("Number of items in catalog: " + str(len(catalog)))
         
     except:
